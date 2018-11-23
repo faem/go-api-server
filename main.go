@@ -1,11 +1,13 @@
 package main
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"github.com/gorilla/mux"
 	"log"
 	"net/http"
+	"strings"
 )
 
 type Profile struct {
@@ -21,19 +23,18 @@ type Skill struct {
 	NoOfEndorsement int    `json:"noOfEndorsement"`
 }
 
-type Admin struct {
-	UserName string `json:"username"`
-	Password string `json:"password"`
-}
-
 //map for our demo database, used map key as ID
 var profilesDB map[string]Profile
+var apiUser map[string]string
 
 //used to get all the profile info using GET request
 func GetProfiles(w http.ResponseWriter, r *http.Request) {
-	if !BasicAuth() {
+	if l, err := BasicAuth(r); !err {
+		w.WriteHeader(http.StatusUnauthorized)
+		w.Write([]byte(fmt.Sprintf("Error: "+l)))
 		return
 	}
+
 	var profiles []Profile
 
 	for _, profile := range profilesDB {
@@ -52,7 +53,9 @@ func GetProfiles(w http.ResponseWriter, r *http.Request) {
 
 //used to get a specific profile info using GET request
 func GetProfile(w http.ResponseWriter, r *http.Request) {
-	if !BasicAuth() {
+	if l, err := BasicAuth(r); !err {
+		w.WriteHeader(http.StatusUnauthorized)
+		w.Write([]byte(fmt.Sprintf("Error: "+l)))
 		return
 	}
 
@@ -69,7 +72,9 @@ func GetProfile(w http.ResponseWriter, r *http.Request) {
 
 //used to delete a profile using DELETE request
 func DeleteProfile(w http.ResponseWriter, r *http.Request) {
-	if !BasicAuth() {
+	if l, err := BasicAuth(r); !err {
+		w.WriteHeader(http.StatusUnauthorized)
+		w.Write([]byte(fmt.Sprintf("Error: "+l)))
 		return
 	}
 
@@ -85,10 +90,11 @@ func DeleteProfile(w http.ResponseWriter, r *http.Request) {
 
 //used to add new profile using POST request
 func AddProfile(w http.ResponseWriter, r *http.Request) {
-	if !BasicAuth() {
+	if l, err := BasicAuth(r); !err {
+		w.WriteHeader(http.StatusUnauthorized)
+		w.Write([]byte(fmt.Sprintf("Error: "+l)))
 		return
 	}
-
 	var profile Profile
 	json.NewDecoder(r.Body).Decode(&profile)
 
@@ -103,7 +109,9 @@ func AddProfile(w http.ResponseWriter, r *http.Request) {
 
 //used to update a profile using PUT request
 func UpdateProfile(w http.ResponseWriter, r *http.Request) {
-	if !BasicAuth() {
+	if l, err := BasicAuth(r); !err {
+		w.WriteHeader(http.StatusUnauthorized)
+		w.Write([]byte(fmt.Sprintf("Error: "+l)))
 		return
 	}
 
@@ -111,22 +119,57 @@ func UpdateProfile(w http.ResponseWriter, r *http.Request) {
 
 	if _, flag := profilesDB[params["id"]]; !flag {
 		w.WriteHeader(http.StatusNotFound)
-		w.Write([]byte(fmt.Sprintf("Profile of " + string(params["id"]) + " not found!")))
+		w.Write([]byte(fmt.Sprintf("Profile of " + string(params["id"]) + " not found!\n")))
 		return
 	}
 
 	var profile Profile
-	json.NewDecoder(r.Body).Decode(&profile)
+	decodedValue := json.NewDecoder(r.Body).Decode(&profile)
+	if decodedValue == nil {
+		w.WriteHeader(http.StatusBadRequest)
+	}
 	profilesDB[params["id"]] = profile
 }
 
 //basic authentication function
-func BasicAuth() bool {
-	return true
+func BasicAuth(r *http.Request) (string, bool) {
+	authHeader := r.Header.Get("Authorization")
+	if authHeader == ""{
+		return "Need authorization!\n", false
+	}
+
+	decodedStr, err := base64.StdEncoding.DecodeString(strings.Split(authHeader, " ")[1])
+	if err != nil {
+		return "Base64 decoding error!\n", false
+	}
+
+	userPass := strings.Split(string(decodedStr), ":")
+
+	/*fmt.Println(userPass)
+	for key,val := range apiUser{
+		fmt.Println(key,val)
+	}*/
+
+	if len(userPass)!=2{
+		return "Authorization header format error!\n", false
+	}
+
+	if pass, err := apiUser[userPass[0]]; err {
+		if pass == userPass[1] {
+			return "", true
+		} else {
+			return "Username and Password doesn't match!\n", false
+		}
+	} else {
+		return "User doesn't exist!\n", false
+	}
 }
+
+
 
 //this function creates a demo DB for our server
 func CreateDemoDB() {
+	//Creating profiles database
 	profilesDB = make(map[string]Profile)
 	profilesDB["fahim-abrar"] = Profile{
 		"fahim-abrar",
@@ -179,11 +222,16 @@ func CreateDemoDB() {
 				100,
 			},
 		}}
+
+	//creating API user info
+	apiUser = make(map[string]string)
+
+	apiUser["fahim"] = "1234"
+	apiUser["admin"] = "admin"
 }
 
-func main() {
+func StartServer() {
 	router := mux.NewRouter()
-	CreateDemoDB()
 
 	router.HandleFunc("/in", GetProfiles).Methods("GET")
 	router.HandleFunc("/in/{id}", GetProfile).Methods("GET")
@@ -192,4 +240,9 @@ func main() {
 	router.HandleFunc("/in/{id}", DeleteProfile).Methods("DELETE")
 
 	log.Fatal(http.ListenAndServe(":8080", router))
+}
+
+func main() {
+	CreateDemoDB()
+	StartServer()
 }
