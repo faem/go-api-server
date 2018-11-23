@@ -2,18 +2,28 @@ package cmd
 
 import (
 	"LinkedinApiServer/api"
+	"fmt"
 	"github.com/spf13/cobra"
 )
 
 func init() {
-	rootCmd.AddCommand(versionCmd2)
+	rootCmd.AddCommand(startCmd)
 }
 
-var versionCmd2 = &cobra.Command{
-	Use:   "strtsrvr",
+var startCmd = &cobra.Command{
+	Use:   "start",
 	Short: "This starts the API server",
-	Long:  `This command shows the version no of the Linkedi api server`,
+	Long:  `This command starts the Linkedin api server`,
 	Run: func(cmd *cobra.Command, args []string) {
+		//fmt.Println(args)
+		for _,val := range args{
+			switch val {
+			case "bypass":
+				fmt.Println("bypass login credential")
+			default:
+				fmt.Println("no such argument for start command")
+			}
+		}
 		api.StartServer()
 	},
 }

@@ -1,7 +1,6 @@
-package main
+package api
 
 import (
-	"LinkedinApiServer/cmd"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -11,6 +10,7 @@ import (
 	"strings"
 )
 
+//----------------------------------------Structures---------------------------------------------------
 type Profile struct {
 	ID       string  `json:"id"`
 	Name     string  `json:"name"`
@@ -24,15 +24,19 @@ type Skill struct {
 	NoOfEndorsement int    `json:"noOfEndorsement"`
 }
 
-//map for our demo database, used map key as ID
-var profilesDB map[string]Profile
-var apiUser map[string]string
+//-------------------------------------Global Variables---------------------------------------------------
+var profilesDB map[string]Profile //map for our demo database, used map key as ID
+var apiUser map[string]string //stores the username (key) and pass (value) of the user of the API
+var srvr http.Server
+var port string = ":8080"
+var Stop chan bool = make(chan bool,1)
+//------------------------------------Handler Functions---------------------------------------------------
 
 //used to get all the profile info using GET request
 func GetProfiles(w http.ResponseWriter, r *http.Request) {
 	if l, err := BasicAuth(r); !err {
 		w.WriteHeader(http.StatusUnauthorized)
-		w.Write([]byte(fmt.Sprintf("Error: "+l)))
+		w.Write([]byte(fmt.Sprintf("Error: " + l)))
 		return
 	}
 
@@ -56,7 +60,7 @@ func GetProfiles(w http.ResponseWriter, r *http.Request) {
 func GetProfile(w http.ResponseWriter, r *http.Request) {
 	if l, err := BasicAuth(r); !err {
 		w.WriteHeader(http.StatusUnauthorized)
-		w.Write([]byte(fmt.Sprintf("Error: "+l)))
+		w.Write([]byte(fmt.Sprintf("Error: " + l)))
 		return
 	}
 
@@ -75,7 +79,7 @@ func GetProfile(w http.ResponseWriter, r *http.Request) {
 func DeleteProfile(w http.ResponseWriter, r *http.Request) {
 	if l, err := BasicAuth(r); !err {
 		w.WriteHeader(http.StatusUnauthorized)
-		w.Write([]byte(fmt.Sprintf("Error: "+l)))
+		w.Write([]byte(fmt.Sprintf("Error: " + l)))
 		return
 	}
 
@@ -93,7 +97,7 @@ func DeleteProfile(w http.ResponseWriter, r *http.Request) {
 func AddProfile(w http.ResponseWriter, r *http.Request) {
 	if l, err := BasicAuth(r); !err {
 		w.WriteHeader(http.StatusUnauthorized)
-		w.Write([]byte(fmt.Sprintf("Error: "+l)))
+		w.Write([]byte(fmt.Sprintf("Error: " + l)))
 		return
 	}
 	var profile Profile
@@ -112,7 +116,7 @@ func AddProfile(w http.ResponseWriter, r *http.Request) {
 func UpdateProfile(w http.ResponseWriter, r *http.Request) {
 	if l, err := BasicAuth(r); !err {
 		w.WriteHeader(http.StatusUnauthorized)
-		w.Write([]byte(fmt.Sprintf("Error: "+l)))
+		w.Write([]byte(fmt.Sprintf("Error: " + l)))
 		return
 	}
 
@@ -132,10 +136,12 @@ func UpdateProfile(w http.ResponseWriter, r *http.Request) {
 	profilesDB[params["id"]] = profile
 }
 
+//-------------------------------------Other Functions---------------------------------------------------
+
 //basic authentication function
 func BasicAuth(r *http.Request) (string, bool) {
 	authHeader := r.Header.Get("Authorization")
-	if authHeader == ""{
+	if authHeader == "" {
 		return "Need authorization!\n", false
 	}
 
@@ -151,7 +157,7 @@ func BasicAuth(r *http.Request) (string, bool) {
 		fmt.Println(key,val)
 	}*/
 
-	if len(userPass)!=2{
+	if len(userPass) != 2 {
 		return "Authorization header format error!\n", false
 	}
 
@@ -165,8 +171,6 @@ func BasicAuth(r *http.Request) (string, bool) {
 		return "User doesn't exist!\n", false
 	}
 }
-
-
 
 //this function creates a demo DB for our server
 func CreateDemoDB() {
@@ -231,7 +235,10 @@ func CreateDemoDB() {
 	apiUser["admin"] = "admin"
 }
 
+
 func StartServer() {
+	fmt.Println("Starting server")
+	CreateDemoDB()
 	router := mux.NewRouter()
 
 	router.HandleFunc("/in", GetProfiles).Methods("GET")
@@ -239,12 +246,30 @@ func StartServer() {
 	router.HandleFunc("/in/{id}", UpdateProfile).Methods("PUT")
 	router.HandleFunc("/in", AddProfile).Methods("POST")
 	router.HandleFunc("/in/{id}", DeleteProfile).Methods("DELETE")
+	srvr.Handler = router
+	srvr.Addr = port
+	fmt.Println("printing")
+	x := <-Stop
+	log.Println("printing2")
+	log.Println(x)
+	if !<-Stop {
+		fmt.Println("stopping server")
+		err := srvr.Shutdown(nil)
+		if err!=nil {
+			log.Fatal("Error shutting down server!")
+		}
 
-	log.Fatal(http.ListenAndServe(":8080", router))
+	}
+	log.Fatal(srvr.ListenAndServe())
 }
 
-func main() {
+func StopServer()  {
+	fmt.Println("stopping server1")
+}
+
+/*func main() {
 	CreateDemoDB()
 	cmd.Execute()
-	go StartServer()
-}
+	//go StartServer()
+}*/
+
