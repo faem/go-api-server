@@ -8,11 +8,11 @@ import (
 
 var rootCmd = &cobra.Command{
 	Use:   "LinkedinApiServer",
-	Short: "Demo",
-	Long: `Demo Demo`,
-	/*Run: func(cmd *cobra.Command, args []string) {
+	Short: "This is the main command",
+	Long: `This is the main command of our Linkedin API server`,
+	Run: func(cmd *cobra.Command, args []string) {
 		//fmt.Println("demo works")
-	},*/
+	},
 }
 
 func Execute() {

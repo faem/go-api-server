@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -8,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"time"
 )
 
 //----------------------------------------Structures---------------------------------------------------
@@ -28,8 +30,10 @@ type Skill struct {
 var profilesDB map[string]Profile //map for our demo database, used map key as ID
 var apiUser map[string]string //stores the username (key) and pass (value) of the user of the API
 var srvr http.Server
-var port string = ":8080"
-var Stop chan bool = make(chan bool,1)
+var bypassAuthentication bool
+//var Stop chan bool
+var stopTime int8
+
 //------------------------------------Handler Functions---------------------------------------------------
 
 //used to get all the profile info using GET request
@@ -140,6 +144,9 @@ func UpdateProfile(w http.ResponseWriter, r *http.Request) {
 
 //basic authentication function
 func BasicAuth(r *http.Request) (string, bool) {
+	if bypassAuthentication{
+		return "", true
+	}
 	authHeader := r.Header.Get("Authorization")
 	if authHeader == "" {
 		return "Need authorization!\n", false
@@ -235,9 +242,14 @@ func CreateDemoDB() {
 	apiUser["admin"] = "admin"
 }
 
+func SetValues(port string, bpa bool, stop int8){
+	srvr.Addr = ":"+port
+	bypassAuthentication = bpa
+	stopTime = stop
+}
 
 func StartServer() {
-	fmt.Println("Starting server")
+	log.Println("Starting server")
 	CreateDemoDB()
 	router := mux.NewRouter()
 
@@ -246,25 +258,35 @@ func StartServer() {
 	router.HandleFunc("/in/{id}", UpdateProfile).Methods("PUT")
 	router.HandleFunc("/in", AddProfile).Methods("POST")
 	router.HandleFunc("/in/{id}", DeleteProfile).Methods("DELETE")
-	srvr.Handler = router
-	srvr.Addr = port
-	fmt.Println("printing")
-	x := <-Stop
-	log.Println("printing2")
-	log.Println(x)
-	if !<-Stop {
-		fmt.Println("stopping server")
-		err := srvr.Shutdown(nil)
-		if err!=nil {
-			log.Fatal("Error shutting down server!")
+	router.HandleFunc("/shutdown", func(w http.ResponseWriter, r *http.Request) {
+		err := srvr.Shutdown(context.Background())
+		if err!= nil{
+			log.Fatal("Error shutting down server")
 		}
+	}).Methods("GET")
 
+	srvr.Handler = router
+
+	if stopTime!= 0{
+		fmt.Println(stopTime)
+		go StopServer(stopTime)
 	}
-	log.Fatal(srvr.ListenAndServe())
+	var stop chan int
+	go func() {
+		log.Fatal(srvr.ListenAndServe())
+
+	}()
+	<-stop
 }
 
-func StopServer()  {
-	fmt.Println("stopping server1")
+func StopServer(x int8)  {
+	timer := time.NewTimer(time.Duration(x)*time.Minute)
+	fmt.Println("Shutting Down server in",x,"min......")
+	<-timer.C
+	err := srvr.Shutdown(context.Background())
+	if err!=nil {
+		log.Fatal("Error shutting down server!")
+	}
 }
 
 /*func main() {
@@ -272,4 +294,3 @@ func StopServer()  {
 	cmd.Execute()
 	//go StartServer()
 }*/
-

@@ -2,11 +2,16 @@ package cmd
 
 import (
 	"LinkedinApiServer/api"
-	"fmt"
 	"github.com/spf13/cobra"
 )
 
+var port string //set port
+var	bpa bool //bypass authentication
+var stopTime int8 //stop the server after a definite time
 func init() {
+	startCmd.PersistentFlags().StringVar(&port, "port", "8080", "This flag sets the port of our API server")
+	startCmd.PersistentFlags().BoolVarP(&bpa, "bpl", "b", false, "This flag allows to bypass the authentication ")
+	startCmd.PersistentFlags().Int8VarP(&stopTime,"shutdown","s",0,"This will be used for stopping the server after a definite time.")
 	rootCmd.AddCommand(startCmd)
 }
 
@@ -16,14 +21,7 @@ var startCmd = &cobra.Command{
 	Long:  `This command starts the Linkedin api server`,
 	Run: func(cmd *cobra.Command, args []string) {
 		//fmt.Println(args)
-		for _,val := range args{
-			switch val {
-			case "bypass":
-				fmt.Println("bypass login credential")
-			default:
-				fmt.Println("no such argument for start command")
-			}
-		}
+		api.SetValues(port, bpa, stopTime)
 		api.StartServer()
 	},
 }
