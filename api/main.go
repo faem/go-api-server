@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"github.com/dgrijalva/jwt-go"
 	"github.com/gorilla/mux"
 	"log"
 	"net/http"
@@ -154,36 +155,65 @@ func ShutDown(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+//Get JWT token for authorization
+func GetToken(w http.ResponseWriter, r *http.Request){
+	if msg, flag := BasicAuth(r); !flag{
+		w.WriteHeader(http.StatusUnauthorized)
+		w.Write([]byte(msg))
+		return
+	}
+
+	mySigningKey := []byte("secretkey")
+	token := jwt.New(jwt.SigningMethodHS256)
+	claims := token.Claims.(jwt.MapClaims)
+
+	user, _, _ := GetUserPass(r)
+
+	claims["admin"] = true
+	claims["user"] = user
+	claims["exp"] = time.Now().Add(time.Minute * 1).Unix()
+	tokenString, _ := token.SignedString(mySigningKey)
+
+	w.Write([]byte(tokenString))
+}
+
 //-------------------------------------Other Functions---------------------------------------------------
+
+func GetUserPass(r *http.Request) (user string, pass string, err string){
+	authHeader := r.Header.Get("Authorization")
+	if authHeader == "" {
+		err = "Need authorization!\n"
+	}
+
+	decodedStr, e := base64.StdEncoding.DecodeString(strings.Split(authHeader, " ")[1])
+	if e != nil {
+		err = "Base64 decoding error!\n"
+	}
+
+	userPass := strings.Split(string(decodedStr), ":")
+
+	if len(userPass) != 2 {
+		err = "Authorization header format error!\n"
+	}
+
+	return userPass[0], userPass[1], err
+}
 
 //basic authentication function
 func BasicAuth(r *http.Request) (string, bool) {
 	if bypassAuthentication{
 		return "", true
 	}
-	authHeader := r.Header.Get("Authorization")
-	if authHeader == "" {
-		return "Need authorization!\n", false
+
+	user, pass, err := GetUserPass(r)
+
+	if err != ""{
+		return err, false
 	}
 
-	decodedStr, err := base64.StdEncoding.DecodeString(strings.Split(authHeader, " ")[1])
-	if err != nil {
-		return "Base64 decoding error!\n", false
-	}
 
-	userPass := strings.Split(string(decodedStr), ":")
-
-	/*fmt.Println(userPass)
-	for key,val := range apiUser{
-		fmt.Println(key,val)
-	}*/
-
-	if len(userPass) != 2 {
-		return "Authorization header format error!\n", false
-	}
-
-	if pass, err := apiUser[userPass[0]]; err {
-		if pass == userPass[1] {
+	if p, err := apiUser[user]; err {
+		if p == pass {
 			return "", true
 		} else {
 			return "Username and Password doesn't match!\n", false
@@ -192,6 +222,8 @@ func BasicAuth(r *http.Request) (string, bool) {
 		return "User doesn't exist!\n", false
 	}
 }
+
+
 
 //this function creates a demo DB for our server
 func CreateDemoDB() {
@@ -265,15 +297,18 @@ func SetValues(port string, bpa bool, stop int8){
 func init(){
 	//Creating demo database
 	CreateDemoDB()
-
+	router.Use(jwtMiddleware)
 	//setting router handler functions
 	router.HandleFunc("/in", GetProfiles).Methods("GET")
 	router.HandleFunc("/in/{id}", GetProfile).Methods("GET")
 	router.HandleFunc("/in/{id}", UpdateProfile).Methods("PUT")
 	router.HandleFunc("/in", AddProfile).Methods("POST")
 	router.HandleFunc("/in/{id}", DeleteProfile).Methods("DELETE")
+
 	router.HandleFunc("/shutdown", ShutDown).Methods("GET")
+	router.HandleFunc("/token", GetToken).Methods("GET")
 }
+//eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhZG1pbiI6dHJ1ZSwiZXhwIjoxNTQzMjU5OTQ2LCJ1c2VyIjoiZmFoaW0ifQ.qRTYLq4en4MMRZdNs3XjhOAOHSrkt_UqZM-xmpnoXIo
 
 func StartServer() {
 	log.Println("---------------------Starting server---------------------")
@@ -316,4 +351,25 @@ func StopServer(x int8)  {
 	if err!=nil {
 		log.Fatal("Error shutting down server!")
 	}
+}
+
+func jwtMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Println("Middleware")
+		authHeader := r.Header.Get("Authorization")
+		if authHeader == "" {
+			w.WriteHeader(http.StatusUnauthorized)
+			w.Write([]byte("Need authorization!\n"))
+		}
+
+		decodedStr, e := jwt.DecodeSegment(strings.Split(authHeader, " ")[1])
+		if e != nil {
+			//w.WriteHeader(http.StatusUnauthorized)
+			w.Write([]byte("Base64 decoding error!\n"))
+		}
+
+		log.Println(string(decodedStr))
+
+		next.ServeHTTP(w, r)
+	})
 }

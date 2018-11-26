@@ -39,3 +39,7 @@ curl --user fahim:1234 localhost:8080/in
 ```
 curl --user fahim:dfsd:d localhost:8080/in
 ```
+#### Authorize
+```
+curl -H 'Accept: application/json' -H "Authorization: Bearer $eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhZG1pbiI6dHJ1ZSwiZXhwIjoxNTQzMjU5OTQ2LCJ1c2VyIjoiZmFoaW0ifQ.qRTYLq4en4MMRZdNs3XjhOAOHSrkt_UqZM-xmpnoXIo" https://localhost/in
+```
