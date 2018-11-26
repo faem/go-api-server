@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
 	"strings"
 	"time"
 )
@@ -284,17 +285,32 @@ func StartServer() {
 		go StopServer(stopTime)
 	}
 	stop := make(chan os.Signal,1)
+	signal.Notify(stop, os.Interrupt)
+
 	go func() {
 		log.Fatal(srvr.ListenAndServe())
 
 	}()
+
 	<-stop
+
 	StopServer(0)
 }
 
 func StopServer(x int8)  {
+	if x == 0{
+		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+		defer cancel()
+		err := srvr.Shutdown(ctx)
+		if err != nil{
+			log.Println("Error in shutting down server!")
+		}
+		fmt.Println("")
+		log.Println("------------------Shutting down server-----------------------\n")
+		return
+	}
 	timer := time.NewTimer(time.Duration(x)*time.Minute)
-	fmt.Println("---------------------Shutting Down server in",x,"min---------------------")
+	fmt.Println("----------------------Shutting Down server in",x,"min---------------------")
 	<-timer.C
 	err := srvr.Shutdown(context.Background())
 	if err!=nil {
