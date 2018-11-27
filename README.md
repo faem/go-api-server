@@ -3,7 +3,7 @@ This repo contains an API server which is built using Golang. It uses Gorilla mu
 
 Here GET request is implemented using Basic AuthN and POST, PUT and DELETE requests are implemented using JWT AuthZ. 
 
-### Running the Server
+## Running the Server
 ```
 go build
 ```
@@ -34,7 +34,7 @@ go build
 ./LinkedinApiServer gentkn -u <username> -e <expiration time in minute>
 ```
 
-### CURL commands
+## CURL commands
 
 ##### Read all profiles
 ```
