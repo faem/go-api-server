@@ -1,7 +1,9 @@
 # HTTP Api Server
 This repo contains an API server which is built using Golang. It uses Gorilla mux library for HTTP API calls,Cobra CLI for making a CLI of the application and go-jwt for adding jwt authorization token.
 
-### Running
+Here GET request is implemented using Basic AuthN and POST, PUT and DELETE requests are implemented using JWT AuthZ. 
+
+### Running the Server
 ```
 go build
 ```
@@ -54,6 +56,10 @@ curl -H "Authorization: Bearer <token>" -s -X POST -H 'Content-Type: application
 ```
 curl -H "Authorization: Bearer <token>" -s -X PUT -H 'Content-Type: application/json' -d '{"id":"masud-rahman","name":"Masudur Rahman (modified)","company":"AppsCode Inc.","position":"Software Engineer","skill":[{"name":"C","noOfEndorsement":3},{"name":"C++","noOfEndorsement":4}]}' localhost:8080/in/masud-rahman
 ```
+##### Generate a JWT token
+```
+curl --user admin:admin localhost:8080/token/<expiration time in minute>
+```
 ##### Invalid Authorization Header check
 ```
 curl --user fahim:dfsd:d localhost:8080/in
@@ -61,4 +67,8 @@ curl --user fahim:dfsd:d localhost:8080/in
 ##### Expired Token Check
 ```
 curl -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhZG1pbiI6dHJ1ZSwiZXhwIjoxNTQzMjU5OTQ2LCJ1c2VyIjoiZmFoaW0ifQ.qRTYLq4en4MMRZdNs3XjhOAOHSrkt_UqZM-xmpnoXIo" -s -X POST -H 'Content-Type: application/json' -d '{"id":"kfoozminus","name":"Jannatul Ferdous","company":"AppsCode Inc.","position":"Software Engineer","skill":[{"name":"C++","noOfEndorsement":100},{"name":"C","noOfEndorsement":100}]}' localhost:8080/in
+```
+##### Shutdown the Server
+``` 
+curl localhost:8080/shutdown
 ```
