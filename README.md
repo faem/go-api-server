@@ -1,33 +1,33 @@
-# LinkedinApiServer
-This is a repo for demo HTTP API server.
+# HTTP Api Server
+This repo contains an API server which is built using Golang. It uses Gorilla mux library for HTTP API calls,Cobra CLI for making a CLI of the application and go-jwt for adding jwt authorization token.
 
 ### Running
 ```
 go build
 ```
 
-Then running the below command will start the server with default configuration
+##### To start the server with default configuration
 
 ```
 ./LinkedinApiServer start
 ```
-To give a port number
+##### To give a port number
 ```
 ./LinkedinApiServer start -p <port number>
 ```
-To bypass login information
+##### To bypass login information
 ```
 ./LinkedinApiServer start -b
 ```
-To stop the server after a definite time
+##### To stop the server after a definite time
 ``` 
 ./LinkedinApiServer start -s <minute>
 ```
-To check the version of the API
+##### To check the version of the API
 ```
 ./LinkedinApiServer version
 ```
-To get a JWT token
+##### To get a JWT token
 ```
 ./LinkedinApiServer gentkn -u <username> -e <expiration time in minute>
 ```
