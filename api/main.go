@@ -103,11 +103,11 @@ func DeleteProfile(w http.ResponseWriter, r *http.Request) {
 
 //used to add new profile using POST request
 func AddProfile(w http.ResponseWriter, r *http.Request) {
-	if l, err := BasicAuth(r); !err {
+	/*if l, err := BasicAuth(r); !err {
 		w.WriteHeader(http.StatusUnauthorized)
 		w.Write([]byte(fmt.Sprintf("Error: " + l)))
 		return
-	}
+	}*/
 	var profile Profile
 	json.NewDecoder(r.Body).Decode(&profile)
 
@@ -132,6 +132,7 @@ func UpdateProfile(w http.ResponseWriter, r *http.Request) {
 
 	if _, flag := profilesDB[params["id"]]; !flag {
 		w.WriteHeader(http.StatusNotFound)
+		fmt.Println("update")
 		w.Write([]byte(fmt.Sprintf("Profile of " + string(params["id"]) + " not found!\n")))
 		return
 	}
@@ -139,11 +140,12 @@ func UpdateProfile(w http.ResponseWriter, r *http.Request) {
 	var profile Profile
 	//log.Println(r.Body)
 	decodedValue := json.NewDecoder(r.Body).Decode(&profile)
-	//log.Println(profile)
+
+	log.Println(profile)
 	if decodedValue != nil {
 		w.WriteHeader(http.StatusBadRequest)
 	}
-	//profilesDB[params["id"]] = profile
+	profilesDB[params["id"]] = profile
 }
 
 //Shutdown handler function
@@ -171,7 +173,7 @@ func GetToken(w http.ResponseWriter, r *http.Request){
 
 	claims["admin"] = true
 	claims["user"] = user
-	claims["exp"] = time.Now().Add(time.Minute * 1).Unix()
+	claims["exp"] = time.Now().Add(time.Minute * 10).Unix()
 	token.Claims = claims
 	tokenString, _ := token.SignedString(mySigningKey)
 	w.Write([]byte(tokenString))
@@ -179,24 +181,43 @@ func GetToken(w http.ResponseWriter, r *http.Request){
 
 //-------------------------------------Other Functions---------------------------------------------------
 
+//used in cobra to generate token
+func GetTokenCmd(user string, exp int) string{
+	mySigningKey := []byte("secretkey")
+	token := jwt.New(jwt.SigningMethodHS256)
+	claims := token.Claims.(jwt.MapClaims)
+
+	claims["admin"] = true
+	claims["user"] = user
+	claims["exp"] = time.Now().Add(time.Minute * time.Duration(exp)).Unix()
+	token.Claims = claims
+	tokenString, _ := token.SignedString(mySigningKey)
+
+	return tokenString
+}
+
+//This returns username and password from a http Request
 func GetUserPass(r *http.Request) (user string, pass string, err string){
 	authHeader := r.Header.Get("Authorization")
 	if authHeader == "" {
-		err = "Need authorization!\n"
+		err = "Need Basic authorization!\n"
 	}
 
-	decodedStr, e := base64.StdEncoding.DecodeString(strings.Split(authHeader, " ")[1])
-	if e != nil {
-		err = "Base64 decoding error!\n"
+	if strings.Split(authHeader, " ")[0]=="Basic"{
+
+		decodedStr, e := base64.StdEncoding.DecodeString(strings.Split(authHeader, " ")[1])
+		if e != nil {
+			err = "Base64 decoding error!\n"
+		}
+		userPass := strings.Split(string(decodedStr), ":")
+		if len(userPass) != 2 {
+			err = "Authorization header format error!\n"
+		}
+
+		return userPass[0], userPass[1], err
+	}else{
+		return "", "", "Need Basic Authentication!"
 	}
-
-	userPass := strings.Split(string(decodedStr), ":")
-
-	if len(userPass) != 2 {
-		err = "Authorization header format error!\n"
-	}
-
-	return userPass[0], userPass[1], err
 }
 
 //basic authentication function
@@ -288,10 +309,51 @@ func CreateDemoDB() {
 	apiUser["admin"] = "admin"
 }
 
+//set values from cobra
 func SetValues(port string, bpa bool, stop int8){
 	srvr.Addr = ":"+port
 	bypassAuthentication = bpa
 	stopTime = stop
+}
+
+
+//to validate jwt tokens
+func jwtMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "GET"{
+			log.Println(r.Method)
+			next.ServeHTTP(w, r)
+		}else{
+
+			fmt.Println("Middleware")
+			authHeader := r.Header.Get("Authorization")
+			if authHeader == "" {
+				w.WriteHeader(http.StatusUnauthorized)
+				w.Write([]byte("Need Bearer authorization! Generate token using your username and password here: http://localhost:<port>/token\n"))
+				return
+			}
+			token, err:= jwt.Parse(strings.Split(authHeader, " ")[1], func(token *jwt.Token) (interface{}, error) {
+				return []byte("secretkey"), nil
+			})
+
+			if token.Valid {
+				fmt.Println("Here")
+				next.ServeHTTP(w, r)
+			} else if ve, ok := err.(*jwt.ValidationError); ok {
+				if ve.Errors&jwt.ValidationErrorMalformed != 0 {
+					w.Write([]byte(fmt.Sprintf("That's not even a token\n")))
+				} else if ve.Errors&(jwt.ValidationErrorExpired|jwt.ValidationErrorNotValidYet) != 0 {
+					// Token is either expired or not active yet
+					w.Write([]byte(fmt.Sprintf("The token is Expired! Please issue a new token!")))
+				} else {
+					w.Write([]byte(fmt.Sprintf("Couldn't handle this token: ", err)))
+				}
+			} else {
+				w.Write([]byte(fmt.Sprintf("Couldn't handle this token: ", err)))
+			}
+		}
+
+	})
 }
 
 func init(){
@@ -308,7 +370,6 @@ func init(){
 	router.HandleFunc("/shutdown", ShutDown).Methods("GET")
 	router.HandleFunc("/token", GetToken).Methods("GET")
 }
-//eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhZG1pbiI6dHJ1ZSwiZXhwIjoxNTQzMjU5OTQ2LCJ1c2VyIjoiZmFoaW0ifQ.qRTYLq4en4MMRZdNs3XjhOAOHSrkt_UqZM-xmpnoXIo
 
 func StartServer() {
 	log.Println("---------------------Starting server---------------------")
@@ -351,30 +412,4 @@ func StopServer(x int8)  {
 	if err!=nil {
 		log.Fatal("Error shutting down server!")
 	}
-}
-
-func jwtMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Println("Middleware")
-		authHeader := r.Header.Get("Authorization")
-		if authHeader == "" {
-			w.WriteHeader(http.StatusUnauthorized)
-			w.Write([]byte("Need authorization!\n"))
-		}
-
-		decodedStr, e := jwt.DecodeSegment(strings.Split(authHeader, " ")[1])
-		fmt.Println(string(decodedStr))
-		if e != nil {
-			//w.WriteHeader(http.StatusUnauthorized)
-			w.Write([]byte("Base64 decoding error!\n"))
-		}
-		token, _:= jwt.Parse(strings.Split(authHeader, " ")[1], func(token *jwt.Token) (interface{}, error) {
-			return []byte("secretkey"), nil
-		})
-
-
-		log.Println(token)
-
-		next.ServeHTTP(w, r)
-	})
 }

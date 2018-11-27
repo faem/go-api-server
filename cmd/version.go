@@ -12,8 +12,8 @@ func init() {
 var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Print the version number of Linkedin API server",
-	Long:  `This command shows the version no of the Linkedi api server`,
+	Long:  `This command shows the version no of the Linkedin api server`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("v0.6")
+		fmt.Println("v0.7")
 	},
 }
