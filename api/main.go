@@ -172,8 +172,8 @@ func GetToken(w http.ResponseWriter, r *http.Request){
 	claims["admin"] = true
 	claims["user"] = user
 	claims["exp"] = time.Now().Add(time.Minute * 1).Unix()
+	token.Claims = claims
 	tokenString, _ := token.SignedString(mySigningKey)
-
 	w.Write([]byte(tokenString))
 }
 
@@ -363,12 +363,17 @@ func jwtMiddleware(next http.Handler) http.Handler {
 		}
 
 		decodedStr, e := jwt.DecodeSegment(strings.Split(authHeader, " ")[1])
+		fmt.Println(string(decodedStr))
 		if e != nil {
 			//w.WriteHeader(http.StatusUnauthorized)
 			w.Write([]byte("Base64 decoding error!\n"))
 		}
+		token, _:= jwt.Parse(strings.Split(authHeader, " ")[1], func(token *jwt.Token) (interface{}, error) {
+			return []byte("secretkey"), nil
+		})
 
-		log.Println(string(decodedStr))
+
+		log.Println(token)
 
 		next.ServeHTTP(w, r)
 	})
