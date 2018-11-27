@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -34,7 +35,6 @@ var profilesDB map[string]Profile //map for our demo database, used map key as I
 var apiUser map[string]string //stores the username (key) and pass (value) of the user of the API
 var srvr http.Server
 var bypassAuthentication bool
-//var Stop chan bool
 var stopTime int8
 var router = mux.NewRouter()
 
@@ -85,11 +85,11 @@ func GetProfile(w http.ResponseWriter, r *http.Request) {
 
 //used to delete a profile using DELETE request
 func DeleteProfile(w http.ResponseWriter, r *http.Request) {
-	if l, err := BasicAuth(r); !err {
+	/*if l, err := BasicAuth(r); !err {
 		w.WriteHeader(http.StatusUnauthorized)
 		w.Write([]byte(fmt.Sprintf("Error: " + l)))
 		return
-	}
+	}*/
 
 	params := mux.Vars(r)
 	if _, flag := profilesDB[params["id"]]; !flag {
@@ -122,11 +122,11 @@ func AddProfile(w http.ResponseWriter, r *http.Request) {
 
 //used to update a profile using PUT request
 func UpdateProfile(w http.ResponseWriter, r *http.Request) {
-	if l, err := BasicAuth(r); !err {
+	/*if l, err := BasicAuth(r); !err {
 		w.WriteHeader(http.StatusUnauthorized)
 		w.Write([]byte(fmt.Sprintf("Error: " + l)))
 		return
-	}
+	}*/
 
 	params := mux.Vars(r)
 
@@ -164,7 +164,7 @@ func GetToken(w http.ResponseWriter, r *http.Request){
 		w.Write([]byte(msg))
 		return
 	}
-
+	params := mux.Vars(r)
 	mySigningKey := []byte("secretkey")
 	token := jwt.New(jwt.SigningMethodHS256)
 	claims := token.Claims.(jwt.MapClaims)
@@ -173,11 +173,52 @@ func GetToken(w http.ResponseWriter, r *http.Request){
 
 	claims["admin"] = true
 	claims["user"] = user
-	claims["exp"] = time.Now().Add(time.Minute * 10).Unix()
+	x, _ := strconv.ParseInt(params["exp"],10,8)
+	claims["exp"] = time.Now().Add(time.Minute * time.Duration(x)).Unix()
 	token.Claims = claims
 	tokenString, _ := token.SignedString(mySigningKey)
-	w.Write([]byte(tokenString))
+	w.Write([]byte(tokenString+"\n"))
 }
+
+//to validate jwt tokens, middleware handler
+func jwtMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "GET"{
+			log.Println(r.Method)
+			next.ServeHTTP(w, r)
+		}else{
+
+			fmt.Println("Middleware")
+			authHeader := r.Header.Get("Authorization")
+			if authHeader == "" {
+				w.WriteHeader(http.StatusUnauthorized)
+				w.Write([]byte("Need Bearer authorization! Generate token using your username and password here: http://localhost:<port>/token\n"))
+				return
+			}
+			token, err:= jwt.Parse(strings.Split(authHeader, " ")[1], func(token *jwt.Token) (interface{}, error) {
+				return []byte("secretkey"), nil
+			})
+
+			if token.Valid {
+				fmt.Println("Here")
+				next.ServeHTTP(w, r)
+			} else if ve, ok := err.(*jwt.ValidationError); ok {
+				if ve.Errors&jwt.ValidationErrorMalformed != 0 {
+					w.Write([]byte(fmt.Sprintf("That's not even a token\n")))
+				} else if ve.Errors&(jwt.ValidationErrorExpired|jwt.ValidationErrorNotValidYet) != 0 {
+					// Token is either expired or not active yet
+					w.Write([]byte(fmt.Sprintf("The token is Expired! Please issue a new token!")))
+				} else {
+					w.Write([]byte(fmt.Sprintf("Couldn't handle this token: ", err)))
+				}
+			} else {
+				w.Write([]byte(fmt.Sprintf("Couldn't handle this token: ", err)))
+			}
+		}
+
+	})
+}
+
 
 //-------------------------------------Other Functions---------------------------------------------------
 
@@ -316,61 +357,6 @@ func SetValues(port string, bpa bool, stop int8){
 	stopTime = stop
 }
 
-
-//to validate jwt tokens
-func jwtMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == "GET"{
-			log.Println(r.Method)
-			next.ServeHTTP(w, r)
-		}else{
-
-			fmt.Println("Middleware")
-			authHeader := r.Header.Get("Authorization")
-			if authHeader == "" {
-				w.WriteHeader(http.StatusUnauthorized)
-				w.Write([]byte("Need Bearer authorization! Generate token using your username and password here: http://localhost:<port>/token\n"))
-				return
-			}
-			token, err:= jwt.Parse(strings.Split(authHeader, " ")[1], func(token *jwt.Token) (interface{}, error) {
-				return []byte("secretkey"), nil
-			})
-
-			if token.Valid {
-				fmt.Println("Here")
-				next.ServeHTTP(w, r)
-			} else if ve, ok := err.(*jwt.ValidationError); ok {
-				if ve.Errors&jwt.ValidationErrorMalformed != 0 {
-					w.Write([]byte(fmt.Sprintf("That's not even a token\n")))
-				} else if ve.Errors&(jwt.ValidationErrorExpired|jwt.ValidationErrorNotValidYet) != 0 {
-					// Token is either expired or not active yet
-					w.Write([]byte(fmt.Sprintf("The token is Expired! Please issue a new token!")))
-				} else {
-					w.Write([]byte(fmt.Sprintf("Couldn't handle this token: ", err)))
-				}
-			} else {
-				w.Write([]byte(fmt.Sprintf("Couldn't handle this token: ", err)))
-			}
-		}
-
-	})
-}
-
-func init(){
-	//Creating demo database
-	CreateDemoDB()
-	router.Use(jwtMiddleware)
-	//setting router handler functions
-	router.HandleFunc("/in", GetProfiles).Methods("GET")
-	router.HandleFunc("/in/{id}", GetProfile).Methods("GET")
-	router.HandleFunc("/in/{id}", UpdateProfile).Methods("PUT")
-	router.HandleFunc("/in", AddProfile).Methods("POST")
-	router.HandleFunc("/in/{id}", DeleteProfile).Methods("DELETE")
-
-	router.HandleFunc("/shutdown", ShutDown).Methods("GET")
-	router.HandleFunc("/token", GetToken).Methods("GET")
-}
-
 func StartServer() {
 	log.Println("---------------------Starting server---------------------")
 
@@ -393,6 +379,7 @@ func StartServer() {
 	StopServer(0)
 }
 
+//This function takes minute as input and stops the server after the specified minute
 func StopServer(x int8)  {
 	if x == 0{
 		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
@@ -413,3 +400,21 @@ func StopServer(x int8)  {
 		log.Fatal("Error shutting down server!")
 	}
 }
+
+func init(){
+	//Creating demo database
+	CreateDemoDB()
+	router.Use(jwtMiddleware)
+
+	//setting router handler functions
+	router.HandleFunc("/in", GetProfiles).Methods("GET")
+	router.HandleFunc("/in/{id}", GetProfile).Methods("GET")
+	router.HandleFunc("/in/{id}", UpdateProfile).Methods("PUT")
+	router.HandleFunc("/in", AddProfile).Methods("POST")
+	router.HandleFunc("/in/{id}", DeleteProfile).Methods("DELETE")
+
+	router.HandleFunc("/shutdown", ShutDown).Methods("GET")
+	router.HandleFunc("/token/{exp}", GetToken).Methods("GET")
+}
+
+
