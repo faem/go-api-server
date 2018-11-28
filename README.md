@@ -3,7 +3,26 @@ This repo contains an API server which is built using Golang. It uses Gorilla mu
 
 Here GET request is implemented using Basic AuthN and POST, PUT and DELETE requests are implemented using JWT AuthZ. 
 
-## Running the Server
+## Run directly from Docker-Hub
+```
+docker run -p 8080:8080 fahimabrar/api start
+```
+After running this use the curl commands to test the server
+
+## Run using dockerfile
+```
+docker build -t <give a name> .
+docker run -p 8080:8080 <given name> start
+```
+
+### Upload to Docker-Hub
+```
+docker login --username=<docker hub username>
+docker tag <id of the created image> <docker hub username>/<name of the image>:<tag>
+docker push <docker hub username>/<name of the image>:<tag>
+```
+
+## Run from Source Code
 ```
 go build
 ```

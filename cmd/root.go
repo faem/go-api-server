@@ -7,7 +7,7 @@ import (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "LinkedinApiServer",
+	Use:   "lnkdn",
 	Short: "This is the main command",
 	Long: `This is the main command of our Linkedin API server`,
 	Run: func(cmd *cobra.Command, args []string) {
