@@ -38,6 +38,16 @@ var bypassAuthentication bool
 var stopTime int8
 var router = mux.NewRouter()
 
+func cloneProfilesToArray() []Profile{
+	profiles := make([]Profile,0,len(profilesDB))
+
+	for _, profile := range profilesDB {
+		profiles = append(profiles, profile)
+	}
+
+	return profiles
+}
+
 //------------------------------------Handler Functions---------------------------------------------------
 
 //used to get all the profile info using GET request
@@ -48,11 +58,7 @@ func GetProfiles(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var profiles []Profile
-
-	for _, profile := range profilesDB {
-		profiles = append(profiles, profile)
-	}
+	profiles := cloneProfilesToArray()
 	//shows error if no content in the DB
 	if profiles == nil {
 		w.WriteHeader(http.StatusNoContent)
