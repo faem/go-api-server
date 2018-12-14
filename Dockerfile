@@ -3,6 +3,7 @@ FROM busybox:glibc
 
 COPY LinkedinApiServer /bin/api
 
+EXPOSE 8080
 #This command can be overridden by CLI
 CMD ["start","-b"]
 

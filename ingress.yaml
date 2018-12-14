@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: apiserver
+  labels:
+    app: apiserver
+spec:
+  replicas: 1
+  template:
+    metadata:
+      name: apiserver
+      labels:
+        app: apiserver
+    spec:
+      containers:
+        - name: apiserver
+          image: fahimabrar/api
+          imagePullPolicy: IfNotPresent
+      restartPolicy: Always
+  selector:
+    matchLabels:
+      app: apiserver
+
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: ingress-apiserver
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  backend:
+    serviceName: default-http-backend
+    servicePort: 80
+  rules:
+    - host: linkedin.local
+      http:
+        paths:
+          - path: /
+            backend:
+              serviceName: apiserver
+              servicePort: 8080
+    - host: cheeses.all
+      http:
+        paths:
+          - path: /
+            backend:
+              serviceName: apiserver
+              servicePort: 8080
+---
