@@ -144,7 +144,7 @@ func UpdateProfile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var profile Profile
-	//log.Println(r.Body)
+	log.Println(r.Body)
 	decodedValue := json.NewDecoder(r.Body).Decode(&profile)
 
 	log.Println(profile)

@@ -16,22 +16,36 @@ spec:
         - name: apiserver
           image: fahimabrar/api
           imagePullPolicy: IfNotPresent
+          ports:
+          - name: api-port
+            containerPort: 8080
+            protocol: TCP
       restartPolicy: Always
   selector:
     matchLabels:
       app: apiserver
-
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: apiserver
+  labels:
+    app: apiserver
+spec:
+  selector:
+    app: apiserver
+  ports:
+    - name: port
+      protocol: TCP
+      port: 8080
+      targetPort: api-port
+  type: NodePort
 ---
 apiVersion: extensions/v1beta1
 kind: Ingress
 metadata:
   name: ingress-apiserver
-  annotations:
-    nginx.ingress.kubernetes.io/rewrite-target: /
 spec:
-  backend:
-    serviceName: default-http-backend
-    servicePort: 80
   rules:
     - host: linkedin.local
       http:
@@ -40,11 +54,6 @@ spec:
             backend:
               serviceName: apiserver
               servicePort: 8080
-    - host: cheeses.all
-      http:
-        paths:
-          - path: /
-            backend:
-              serviceName: apiserver
-              servicePort: 8080
 ---
+
+# CHECK KEY VALUE OF SELECTOR!!!!!
