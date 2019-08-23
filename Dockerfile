@@ -1,7 +1,7 @@
 #------------------------Using busybox image---------------------------------------------------
 FROM busybox:glibc
 
-COPY LinkedinApiServer /bin/api
+COPY go-api-server /bin/api
 
 EXPOSE 8080
 #This command can be overridden by CLI
@@ -14,45 +14,45 @@ ENTRYPOINT ["/bin/api"]
 #------------------------Using golang:alpine image---------------------------------------------------
 #FROM golang:1.10-alpine3.7
 #
-#COPY . /go/src/LinkedinApiServer
-#WORKDIR /go/src/LinkedinApiServer
+#COPY . /go/src/github.com/faem/go-api-server
+#WORKDIR /go/src/github.com/faem/go-api-server
 #
 #RUN go build
 #
 #CMD ["start","-b"]
-#ENTRYPOINT ["/go/src/LinkedinApiServer/LinkedinApiServer"]
+#ENTRYPOINT ["/go/src/github.com/faem/go-api-server/go-api-server"]
 
 
 #------------------------Using Ubuntu image---------------------------------------------------
 #FROM ubuntu:18.10
 #
-#COPY LinkedinApiServer /bin/LinkedinApiServer
+#COPY go-api-server /bin/go-api-server
 #
 #CMD ["start","-b"]
-#ENTRYPOINT ["/bin/LinkedinApiServer"]
+#ENTRYPOINT ["/bin/go-api-server"]
 
 
 #------------------------Using golang image and bin folder---------------------------------------------------
 #FROM golang
 #
-#ADD . /go/src/LinkedinApiServer
+#ADD . /go/src/github.com/faem/go-api-server
 #
 #RUN go get github.com/spf13/cobra
 #RUN go get github.com/dgrijalva/jwt-go
 #RUN go get github.com/gorilla/mux
-#RUN go install LinkedinApiServer/
+#RUN go install go-api-server/
 #
-#ENTRYPOINT ["/go/bin/LinkedinApiServer"]
+#ENTRYPOINT ["/go/bin/go-api-server"]
 
 
 #------------------------Using golang image and src folder---------------------------------------------------
 #FROM golang
 #
-#COPY . /go/src/LinkedinApiServer
+#COPY . /go/src/github.com/faem/go-api-server
 #
 #RUN go get github.com/spf13/cobra
 #RUN go get github.com/dgrijalva/jwt-go
 #RUN go get github.com/gorilla/mux
-#RUN go build LinkedinApiServer/
+#RUN go build go-api-server/
 #
-#ENTRYPOINT ["/go/src/LinkedinApiServer/LinkedinApiServer"]
+#ENTRYPOINT ["/go/src/github.com/faem/go-api-server/go-api-server"]

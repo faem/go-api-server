@@ -1,6 +1,6 @@
 package main
 
-import "LinkedinApiServer/cmd"
+import "github.com/faem/go-api-server/cmd"
 
 func main()  {
 	cmd.Execute()

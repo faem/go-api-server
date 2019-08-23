@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"LinkedinApiServer/api"
+	"github.com/faem/go-api-server/api"
 	"fmt"
 	"github.com/spf13/cobra"
 )
