@@ -30,27 +30,27 @@ go build
 ##### To start the server with default configuration
 
 ```
-./LinkedinApiServer start
+./go-api-server start
 ```
 ##### To give a port number
 ```
-./LinkedinApiServer start -p <port number>
+./go-api-server start -p <port number>
 ```
 ##### To bypass login information
 ```
-./LinkedinApiServer start -b
+./go-api-server start -b
 ```
 ##### To stop the server after a definite time
 ``` 
-./LinkedinApiServer start -s <minute>
+./go-api-server start -s <minute>
 ```
 ##### To check the version of the API
 ```
-./LinkedinApiServer version
+./go-api-server version
 ```
 ##### To get a JWT token
 ```
-./LinkedinApiServer gentkn -u <username> -e <expiration time in minute>
+./go-api-server gentkn -u <username> -e <expiration time in minute>
 ```
 
 ## CURL commands
